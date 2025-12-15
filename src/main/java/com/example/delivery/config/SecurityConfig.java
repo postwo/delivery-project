@@ -19,6 +19,7 @@ public class SecurityConfig {
                 .httpBasic(Customizer.withDefaults()) // 또는 JWT 등 다른 인증 방식 사용 (추가)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/member/**").permitAll() // 공개 API
+                        .requestMatchers(  "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/private/**").authenticated() // 인증 필요
                         .anyRequest().denyAll() // 기본 인증 (JWT로 대체 예정)
                 );
