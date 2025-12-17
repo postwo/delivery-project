@@ -27,14 +27,24 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(keyBytes); // JWT 서명용 SecretKey 생성
     }
 
-    public String generateToken(String email) {
+    public String generateAccessToken(String email) {
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
+                .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiration)) // 30분
                 .signWith(getSigningKey())
                 .compact();
     }
+
+    public String generateRefreshToken(String email) {
+        return Jwts.builder()
+                .setSubject(email)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + refreshTokenExpiration)) // 7일
+                .signWith(getSigningKey())
+                .compact();
+    }
+
 
     public String getUsernameFromToken(String token) {
         return Jwts.parserBuilder().setSigningKey(getSigningKey()).build()

@@ -8,4 +8,5 @@ import com.example.delivery.dto.member.RegisterRequest;
 public interface MemberService {
     MemberResponse register(RegisterRequest request);
     LoginResponse login(LoginRequest request);
+    LoginResponse refreshToken(String refreshToken);
 }

@@ -43,6 +43,8 @@ public class Member extends BaseTimeEntity {
     @Column(nullable = false, length = 150)
     private String address;
 
+    private String refreshToken;
+
     @Column(name = "unregistered_at")
     private LocalDateTime unregisteredAt; // 탈퇴 시간
 

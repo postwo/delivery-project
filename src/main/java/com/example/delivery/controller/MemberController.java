@@ -9,10 +9,7 @@ import com.example.delivery.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
@@ -33,4 +30,12 @@ public class MemberController {
         var response = memberService.login(request);
         return Api.OK(response);
     }
+
+    @PostMapping("/refresh")
+    public Api<LoginResponse> refresh(@RequestHeader("Authorization") String refreshToken) {
+        String token = refreshToken.replace("Bearer ", "");
+        var response = memberService.refreshToken(token);
+        return Api.OK(response);
+    }
+
 }
