@@ -22,7 +22,7 @@ import java.util.List;
 @AllArgsConstructor
 @ToString(exclude = {"storeMembers", "memberOrders"})
 @EqualsAndHashCode(of = "id", callSuper = false)
-public class Member extends BaseTimeEntity {
+public class Member extends BaseTimeEntity  {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

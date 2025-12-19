@@ -1,5 +1,7 @@
 package com.example.delivery.config;
 
+import com.example.delivery.filter.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -7,9 +9,15 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -18,11 +26,13 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable) // 로그인 페이지 비활성화 (추가)
                 .httpBasic(Customizer.withDefaults()) // 또는 JWT 등 다른 인증 방식 사용 (추가)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/member/**").permitAll() // 공개 API
+                        .requestMatchers("/api/member/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/private/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(  "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/api/private/**").authenticated() // 인증 필요
                         .anyRequest().denyAll() // 기본 인증 (JWT로 대체 예정)
-                );
+                ).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
 
         return http.build();
     }
@@ -30,5 +40,18 @@ public class SecurityConfig {
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean //추가
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.addAllowedOrigin("http://localhost:5173/"); // 프론트 주소
+        config.addAllowedMethod("*"); // GET, POST, PUT, DELETE 등
+        config.addAllowedHeader("*");
+        config.setAllowCredentials(true); // 인증 정보 (쿠키, 헤더 등) 포함 허용
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }

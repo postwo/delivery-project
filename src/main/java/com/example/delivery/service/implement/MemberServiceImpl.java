@@ -1,6 +1,7 @@
 package com.example.delivery.service.implement;
 
 import com.example.delivery.common.error.MemberErrorCode;
+import com.example.delivery.common.error.TokenErrorCode;
 import com.example.delivery.common.exception.ApiException;
 import com.example.delivery.domain.member.Member;
 import com.example.delivery.dto.member.LoginRequest;
@@ -10,6 +11,9 @@ import com.example.delivery.dto.member.RegisterRequest;
 import com.example.delivery.repository.MemberRepository;
 import com.example.delivery.service.MemberService;
 import com.example.delivery.util.JwtTokenProvider;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -52,7 +56,9 @@ public class MemberServiceImpl implements MemberService {
            throw new ApiException(MemberErrorCode.PASSWORD_NOT_MATCH, "비밀번호가 일치하지 않습니다.");
        }
 
-        String accessToken = jwtTokenProvider.generateAccessToken(member.getEmail());
+       String role = member.getStatus().toString();
+
+        String accessToken = jwtTokenProvider.generateAccessToken(member.getEmail(),role);
         String refreshToken = jwtTokenProvider.generateRefreshToken(member.getEmail());
 
         member.setRefreshToken(refreshToken);
@@ -62,27 +68,57 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
-    public LoginResponse refreshToken(String refreshToken) {
+    public LoginResponse refreshToken(HttpServletRequest request) {
 
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
-            throw new RuntimeException("Refresh Token이 유효하지 않습니다.");
+        // 쿠키에서 refresh token 추출
+        String refreshToken = null;
+
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if (cookie.getName().equals("refreshToken")) {
+                    refreshToken = cookie.getValue();
+                }
+            }
+        }
+
+        if (refreshToken == null || !jwtTokenProvider.validateToken(refreshToken)) {
+            throw new ApiException(TokenErrorCode.INVALID_TOKEN,"유효하지 않은 리프레시 토큰입니다");
         }
 
         String email = jwtTokenProvider.getUsernameFromToken(refreshToken);
         Member member = memberRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("사용자 없음"));
+                .orElseThrow(() -> new ApiException(MemberErrorCode.MEMBER_NOT_FOUND,"사용자를 찾을 수 없음."));
+
+        String role = member.getStatus().toString();
 
         if (!refreshToken.equals(member.getRefreshToken())) {
-            throw new RuntimeException("서버에 저장된 Refresh Token과 다릅니다.");
+            throw new ApiException(TokenErrorCode.REFRESH_TOKEN_NOT_MATCH, "서버에 저장된 리프레시 토큰과 다릅니다.");
         }
 
-        String newAccessToken = jwtTokenProvider.generateAccessToken(email);
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(email);
+        String newAccessToken = jwtTokenProvider.generateAccessToken(email,role);
 
-        member.setRefreshToken(newRefreshToken);
+        return LoginResponse.login(newAccessToken,null);
+    }
+
+    @Override
+    public String logout(String accessToken, HttpServletResponse httpResponse) {
+        String token = accessToken.replace("Bearer ", "");
+        String email = jwtTokenProvider.getUsernameFromToken(token);
+
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new ApiException(MemberErrorCode.MEMBER_NOT_FOUND, "사용자를 찾을수 없습니다"));
+
+        member.setRefreshToken(null);
         memberRepository.save(member);
 
-        return LoginResponse.login(newAccessToken, newRefreshToken);
+        // 쿠키 삭제
+        Cookie refreshCookie = new Cookie("refreshToken", null);
+        refreshCookie.setHttpOnly(true);
+        refreshCookie.setMaxAge(0);
+        refreshCookie.setPath("/");
+        httpResponse.addCookie(refreshCookie);
+
+        return "로그아웃 성공";
     }
 
 

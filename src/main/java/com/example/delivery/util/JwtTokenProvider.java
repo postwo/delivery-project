@@ -2,6 +2,7 @@ package com.example.delivery.util;
 
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -23,13 +24,14 @@ public class JwtTokenProvider {
     private long refreshTokenExpiration; // 리프레시 토큰 만료 시간(ms)
 
     private SecretKey getSigningKey() {
-        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8); // 문자열 키를 바이트 배열로 변환
-        return Keys.hmacShaKeyFor(keyBytes); // JWT 서명용 SecretKey 생성
+        SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)); // 문자열 키를 바이트 배열로 변환
+        return key; // JWT 서명용 SecretKey 생성
     }
 
-    public String generateAccessToken(String email) {
+    public String generateAccessToken(String email,String role) {
         return Jwts.builder()
                 .setSubject(email)
+                .claim("role",role) // 권한 추가
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiration)) // 30분
                 .signWith(getSigningKey())
@@ -41,7 +43,7 @@ public class JwtTokenProvider {
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + refreshTokenExpiration)) // 7일
-                .signWith(getSigningKey())
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                 .compact();
     }
 
@@ -56,7 +58,7 @@ public class JwtTokenProvider {
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(getSigningKey()).build()
-                    .parseClaimsJws(token);
+                    .parseClaimsJws(token).getBody();
             return true;
         } catch (JwtException | IllegalArgumentException e) {
             return false;

@@ -29,6 +29,8 @@ public enum TokenErrorCode implements ErrorCodeIfs{
     // JWTException과 그 외 일반 예외는 기존 코드를 활용하거나 새로운 코드를 사용할 수 있습니다.
     GENERAL_JWT_ERROR(400, 2013, "알 수 없는 JWT 처리 에러"), // JwtException
     GENERAL_SERVER_ERROR(500, 5000, "서버 내부 오류 발생"), // Exception e
+
+    REFRESH_TOKEN_NOT_MATCH(401, 2014, "서버에 저장된 리프레시 토큰과 다릅니다."),
     ;
 
     private final Integer httpStatusCode;
